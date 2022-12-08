@@ -1,6 +1,6 @@
 <?php
 
-$input = file_get_contents(__DIR__ . '/../data/day01.txt');
+$input = file_get_contents(__DIR__ . '/input/day01.txt');
 
 $a = array_map(fn($v) => array_sum(explode("\n", $v)), explode("\n\n", $input));
 
