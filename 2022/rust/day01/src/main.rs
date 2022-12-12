@@ -1,5 +1,6 @@
 fn main() {
-    let mut data =
+    // Read the data.
+    let mut calories =
         include_str!("../../../data/day01.txt")
             .lines()
             .fold([0].to_vec(), |mut data, line| {
@@ -14,8 +15,12 @@ fn main() {
                 data
             });
 
-    data.sort_by(|a, b| b.cmp(a));
-    data.resize(3, 0);
+    // Part 1.
+    println!("{}", calories.iter().max().unwrap());
 
-    println!("{:?}", data.iter().sum::<i32>());
+    // Part 2.
+    calories.sort_by(|a, b| b.cmp(a));
+    calories.resize(3, 0);
+
+    println!("{}", calories.iter().sum::<i32>());
 }

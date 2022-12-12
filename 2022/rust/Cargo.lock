@@ -9,30 +9,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8f8cb5d814eb646a863c4f24978cff2880c4be96ad8cde2c0f0678732902e271"
 
 [[package]]
-name = "day01a"
+name = "day01"
 version = "0.1.0"
 
 [[package]]
-name = "day01b"
+name = "day02"
 version = "0.1.0"
 
 [[package]]
-name = "day02a"
-version = "0.1.0"
-
-[[package]]
-name = "day02b"
-version = "0.1.0"
-
-[[package]]
-name = "day03a"
-version = "0.1.0"
-dependencies = [
- "array_tool",
-]
-
-[[package]]
-name = "day03b"
+name = "day03"
 version = "0.1.0"
 dependencies = [
  "array_tool",
@@ -40,11 +25,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "day04a"
-version = "0.1.0"
-
-[[package]]
-name = "day04b"
+name = "day04"
 version = "0.1.0"
 
 [[package]]
