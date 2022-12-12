@@ -69,7 +69,7 @@ impl FromStr for Sign {
 
 fn main() {
     // Read the data.
-    let strategy = include_str!("../../../data/day02.txt")
+    let strategy = include_str!("../input.txt")
         .lines()
         .map(|line| line.split(' ').collect::<Vec<&str>>());
 

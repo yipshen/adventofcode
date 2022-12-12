@@ -28,7 +28,7 @@ struct IntervalError;
 
 fn main() {
     // Read the data.
-    let intervals = include_str!("../../../data/day04.txt").lines();
+    let intervals = include_str!("../input.txt").lines();
 
     // Compute counts.
     let (contains_count, overlaps_count) = intervals.clone().fold((0, 0), |acc, line| {

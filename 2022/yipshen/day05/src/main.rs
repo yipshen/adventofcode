@@ -107,7 +107,7 @@ impl CrateMover {
 }
 
 fn main() {
-    let mover = CrateMover::from_file("../data/day05.txt");
+    let mover = CrateMover::from_file("input.txt");
 
     // Part 1.
     println!("{}", mover.clone().move_9000());

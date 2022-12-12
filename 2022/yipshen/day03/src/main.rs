@@ -7,7 +7,7 @@ fn main() {
     let alphabet: String = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ".to_string();
 
     // Read the data.
-    let rucksacks = include_str!("../../../data/day03.txt").lines();
+    let rucksacks = include_str!("../input.txt").lines();
 
     // Part 1.
     println!(

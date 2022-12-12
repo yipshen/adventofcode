@@ -17,10 +17,7 @@ fn find_marker(message: &str, count: usize) -> usize {
 
 fn main() {
     // Read the data.
-    let message = include_str!("../../../data/day06.txt")
-        .lines()
-        .next()
-        .unwrap();
+    let message = include_str!("../input.txt").lines().next().unwrap();
 
     // Part 1.
     println!("{}", find_marker(message, 4));
