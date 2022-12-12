@@ -62,7 +62,7 @@ impl FromStr for Sign {
         } else if s.eq("C") || s.eq("Z") {
             Ok(Self::Scissors)
         } else {
-            Err(SignError {})
+            Err(Self::Err {})
         }
     }
 }
