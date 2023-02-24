@@ -1,11 +1,13 @@
 import numpy as np
+import pygame
+from Tree import Tree
+import sys
+from pygame.locals import *
+
 import logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-
-#file = "test.txt"
-file = "input.txt"
 
 def loadInput(fileInput):
     with open(fileInput, "r") as f:
@@ -16,7 +18,6 @@ def loadInput(fileInput):
             gridtree = np.vstack([gridtree, a])
 
     return gridtree
-
 
 
 # A tree is visible if all of the other trees between it and an edge of the grid are shorter than it.
@@ -88,7 +89,7 @@ def isVisible(matrice, treePositions):
     checkDown: {checkDown}" )
     return checkUp or checkDown or checkLeft or checkRight
 
-# support position is a couple (line,col)
+# treePosition is a couple (line,col)
 def scenicScore(matrice, treePosition):
     rowMax, colMax = np.shape(matrice)
     rowMin, colMin = 0, 0
@@ -191,7 +192,190 @@ def maxScenicScore(matrice):
             logger.debug(f"tree: {(i, j)} vaut : {matrice[i][j]} - scenicscore: {scenicEvaluate}")
     return max(scenicScoreList)
 
-grid = loadInput(file)
+def getTreeWithMaxScenicScore(matrice):
+    dictOfTreeWithSceniceScore= {}
+    rowMatriceMax, colMatriceMax = np.shape(matrice)
+    rowMatriceMin, colMatriceMin = 0,0
+    for i in range(rowMatriceMin, rowMatriceMax):
+        for j in range(colMatriceMin, colMatriceMax):
+            scenicEvaluate = scenicScore(matrice, (i, j))
+            dictOfTreeWithSceniceScore[(i,j)] = scenicEvaluate
+            logger.debug(f"tree: {(i, j)} vaut : {matrice[i][j]} - scenicscore: {scenicEvaluate}")
+    logger.debug(f"dictOfTreeWithSceniceScore: {dictOfTreeWithSceniceScore}")
+    return max(dictOfTreeWithSceniceScore, key=dictOfTreeWithSceniceScore.get)
+
+def scenicUIOfTree(matrice,treePosition):
+    listOfTrees = []
+    rowMax, colMax = np.shape(matrice)
+    rowMin, colMin = 0, 0
+    rowTree,colTree = treePosition
+    treeSize = matrice[rowTree, colTree]
+
+    # measuring Up
+    if rowTree == rowMin:
+        listOfTrees.append((rowTree,colTree))
+    else:
+        for e in range(rowTree, rowMin, -1):
+            treeNeighborSize = matrice[e-1, colTree]
+            if treeNeighborSize >= treeSize:
+                listOfTrees.append((e-1, colTree))
+                break
+            else:
+                listOfTrees.append((e-1, colTree))
+        logger.debug(f"tree {treePosition} [{treeSize}] - listOfTrees: {listOfTrees}")
+
+    # measuring down
+    if rowTree == rowMax-1:
+        listOfTrees.append((rowTree, colTree))
+        logger.debug(f"tree {treePosition} [{treeSize}] - listOfTrees: {listOfTrees}")
+    else:
+        for e in range(rowTree, rowMax-1):
+            treeNeighborSize = matrice[e + 1, colTree]
+            if treeNeighborSize >= treeSize:
+                listOfTrees.append((e+1, colTree))
+                break
+            else:
+                listOfTrees.append((e+1, colTree))
+        logger.debug(f"tree {treePosition} [{treeSize}] - listOfTrees: {listOfTrees}")
+
+    # measuring left
+    if colTree == colMin:
+        listOfTrees.append((rowTree,colTree))
+        logger.debug(f"tree {treePosition} [{treeSize}] - listOfTrees: {listOfTrees}")
+    else:
+        for e in range(colTree, colMin, -1):
+            treeNeighborSize = matrice[rowTree, e - 1]
+            if treeNeighborSize >= treeSize:
+                listOfTrees.append((rowTree, e-1))
+                break
+            else:
+                listOfTrees.append((rowTree, e-1))
+        logger.debug(f"tree {treePosition} [{treeSize}] - listOfTrees: {listOfTrees}")
+
+    # measuring right
+    if colTree == colMax - 1:
+        listOfTrees.append((rowTree, colTree))
+        logger.debug(f"tree {treePosition} [{treeSize}] - listOfTrees: {listOfTrees}")
+    else:
+        for e in range(colTree, colMax -1):
+            treeNeighborSize = matrice[rowTree, e + 1]
+            if treeNeighborSize >= treeSize:
+                listOfTrees.append((rowTree, e+1))
+                break
+            else:
+                listOfTrees.append((rowTree, e+1))
+        logger.debug(f"tree {treePosition} [{treeSize}] - listOfTrees: {listOfTrees}")
+    return listOfTrees
+
+
+def displayMatrice(matrice, window):
+    forest = pygame.sprite.Group()
+    rowMax, colMax = np.shape(matrice)
+    rowMin, colMin = 0, 0
+    space = 2
+    marge = 5
+    height = window.get_height()
+    width = window.get_width()
+    sizeCase = (height - ((2 * marge) + (space * rowMax))) // rowMax
+    center_x = (abs(width - (rowMax * sizeCase + rowMax * space)) // 2 )
+    center_y = (abs(height - (colMax * sizeCase + colMax * space)) // 2 )
+
+    myfont = pygame.font.SysFont("", 15)
+
+    logger.debug(f"init Display Matrice size {rowMax,colMax} sizeCase: {sizeCase} center: {center_x, center_y}")
+    for i in range(rowMin, rowMax):
+        caseCoordX = ((sizeCase+space) * i) + center_x
+        for j in range(colMin, colMax):
+            caseCoordY = ((sizeCase+space) * j) + center_y
+            treeSize = matrice[i,j]
+            color = (50, 28*treeSize, 0)
+            #tree = pygame.draw.rect(window, color, Rect(caseCoordY, caseCoordX, sizeCase, sizeCase))
+            tree = Tree(color,sizeCase,sizeCase,i,j,caseCoordX,caseCoordY,treeSize)
+            logger.debug(f"tree.rect.size {tree.rect.size} tree.rect.center: {tree.rect.centery}")
+
+            #label = myfont.render(str(treeSize), 1, (255, 255, 255))
+
+            logger.debug(f"X,Y = ({tree.rect.x}, {tree.rect.y}) treeSize = {tree.getSize()} color = {tree.getColor()} i,j: {tree.getCoordX()},{tree.getCoordY()}")
+            #tree.image.blit(label, (tree.rect.width/2, tree.rect.height/2))
+
+            forest.add(tree)
+            logger.debug(f"forest: {forest}")
+
+    return forest
+
+def getTreeSelected(listOfSprites):
+    for e in listOfSprites:
+        if e.isSelected():
+            logger.debug(f"sprite get size: {e.getCoordX(), e.getCoordY()}")
+            return (e.getCoordX(), e.getCoordY())
+
+def selectTree(listOfSprites, treePosition):
+    x,y = treePosition
+    for e in listOfSprites:
+        if e.getCoordX() == x and e.getCoordY() == y:
+            e.setSelected(True)
+
+def highlightScenicTree(spriteList, scenicList):
+    logger.debug(f"scenicList : {scenicList}")
+    for e in spriteList:
+       # logger.debug(f"test : {e.}")
+        if ((e.getCoordX(),e.getCoordY()) in scenicList):
+            e.setHighlighted(True)
+
+
+def reset(spriteList):
+    for e in spriteList:
+        e.reset()
+
+
+
+######### main ########
+def main():
+    #file = "test.txt"
+    file = "input.txt"
+    grid = loadInput(file)
+    print(grid)
+    a = getTreeWithMaxScenicScore(grid)
+
+    pygame.init()
+    width, height = 1020,1020
+    screen = pygame.display.set_mode((width, height))
+    pygame.display.set_caption("Forest")
+    background = pygame.Surface(screen.get_size())
+    background.fill((0, 0, 0))
+    screen.blit(background, (0, 0))
+
+
+    all_trees = displayMatrice(grid, screen)
+    all_trees.draw(screen)
+
+    #boucle event
+    while 1:
+        pygame.time.Clock().tick(60)
+        event_list = pygame.event.get()
+        for event in event_list:  # On parcours la liste de tous les événements reçus
+            if event.type == QUIT:  # Si un de ces événements est de type QUIT
+                sys.exit()  # On quite le programme
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_a:
+                    maxTreeScenicScorePos = getTreeWithMaxScenicScore(grid)
+                    selectTree(all_trees, maxTreeScenicScorePos)
+                if event.key == pygame.K_r:
+                    reset(all_trees)
+        treeSelected = getTreeSelected(all_trees.sprites())
+        if treeSelected:
+            logger.info(f"treeSelected {treeSelected} ScenicList: {scenicUIOfTree(grid, treeSelected)}")
+            highlightScenicTree(all_trees.sprites(), scenicUIOfTree(grid, treeSelected))
+        else:
+            reset(all_trees.sprites())
+
+        all_trees.update(event_list)
+        all_trees.draw(screen)
+        pygame.display.flip()
 
 #print(f" {scenicScore(grid, (3, 2))}")
-print(f"maxScenicScore(grid) : {maxScenicScore(grid)}")
+#print(f"maxScenicScore(grid) : {maxScenicScore(grid)}")
+
+if __name__ == '__main__':
+    main()
+    pg.quit()
