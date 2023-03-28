@@ -1,9 +1,7 @@
 import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-import gmpy2
-from gmpy2 import mpz, mul, powmod, add
-import time
+
 
 
 
@@ -48,12 +46,6 @@ class Monkey:
         self.__decisionValue = v
 
     def setOperation(self, ope):
-        # if ope == "old * old":
-        #     self.__operation = "mul(old, old)"
-        # elif "old *" in ope:
-        #     self.__operation = "mul(old,"+ope[5:]+")"
-        # elif "old +" in ope:
-        #     self.__operation = "add(old,"+ope[5:]+")"
         self.__operation = ope
 
 
@@ -81,13 +73,11 @@ class Monkey:
         return list(map(lambda Monkey: Monkey.getMonkeyId(),self.__monkeyFriendsToShare))
 
 
-    def inspectItem(self, item, ope):
-        # start_time = time.time()
+    def inspectItem(self, item, ope, ppcm):
         logger.debug(f"inspectItem - item :{item} ope: {ope}")
         old = item
         result = eval(ope)
-        # print(f"inspectItem execute time: {(time.time() - start_time)} s")
-        return result
+        return result % ppcm
 
     def throwItem(self):
         newWorryItem = self.getWorryLevel()
@@ -101,25 +91,13 @@ class Monkey:
             self.__monkeyFriendsToShare[1].addItem(boredItemValue)
         self.__listItem.pop(0)
 
-    def throwItem2(self):
-        boredItemValue = self.inspectItem(self.getItem(), self.__operation)
-        logger.debug(f"throwItem2 - boredItemValue : {boredItemValue}")
+    def throwItem2(self, itemValue: int):
+        boredItemValue = itemValue
         if boredItemValue % self.__decisionValue == 0:
-            # print(f"test is_divible - execute time: {(time.time() - start_time)} s")
-            print(f"++++++monkey {self.__monkeyId} item {boredItemValue} is divisible by {self.__decisionValue}+++++++")
-            # congruence = gmpy2.c_mod(boredItemValue, self.__decisionValue)
-            congruence = boredItemValue % self.__decisionValue
-            logger.debug(f"throw item {congruence} to Monkey {self.__monkeyFriendsToShare[0].getMonkeyId()}")
-            #start_time = time.time()
-            self.__monkeyFriendsToShare[0].addItem(congruence)
-            #print(f"addItem - execute time: {(time.time() - start_time)} s")
+            logger.debug(f"throw item {boredItemValue} to Monkey {self.__monkeyFriendsToShare[0].getMonkeyId()}")
+            self.__monkeyFriendsToShare[0].addItem(boredItemValue)
         else:
-            # print(f"test is_divible - execute time: {(time.time() - start_time)} s")
-            # congruence = gmpy2.c_mod(boredItemValue, self.__decisionValue)
-            # congruence = boredItemValue % self.__decisionValue
             logger.debug(f"throw item {boredItemValue} to Monkey {self.__monkeyFriendsToShare[1].getMonkeyId()}")
-
-
             self.__monkeyFriendsToShare[1].addItem(boredItemValue)
         self.__listItem.pop(0)
 

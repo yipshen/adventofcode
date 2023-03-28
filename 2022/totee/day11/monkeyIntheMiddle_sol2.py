@@ -1,9 +1,7 @@
 import logging
 from monkey import Monkey
 import re
-import gmpy2
-from gmpy2 import mpz
-import time
+from numpy import lcm
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -31,7 +29,6 @@ def loadData(input: str) -> dict:
             elif "items" in line:
                 items = re.search('items:(.*)$', line).group(1).strip().split(',')
                 logger.debug(f"monkey {dictofMonkeys[id].getMonkeyId()} items {items}")
-                # q = list(map(mpz, items))
                 q = list(map(int, items))
                 logger.debug(f"monkey {dictofMonkeys[id].getMonkeyId()} items q {q}")
                 dictofMonkeys[id].addItem(q)
@@ -72,7 +69,7 @@ def MonkeysStatus(dictMonkey):
         print(f"monkey {i} div: {dictMonkey[i].getDecisionValue()} ope: {dictMonkey[i].getOperation()} Friends {dictMonkey[i].getMonkeyFriends()} items: {dictMonkey[i].getAllItem()}")
 
 
-def MonkeysItemSize(dictMonkey):
+def MonkeysItemSize(dictMonkey: dict):
     print("************ Monkey item size ************")
     for i in range(0, len(dictMonkey)):
         item = dictMonkey[i].getItem()
@@ -80,47 +77,46 @@ def MonkeysItemSize(dictMonkey):
             itemSize = len(dictMonkey[i].getItem())
             print(f"monkey {i} : {itemSize}")
 
+def calculatePPCM(dictMonkey: dict) -> int:
+    divisibleNumber = []
+    for e in dictMonkey.values():
+        divisibleNumber.append(e.getDecisionValue())
+    return lcm.reduce(divisibleNumber)
+
 def main():
-    file = 'test.txt'
-    #file = 'input.txt'
+    #file = 'test.txt'
+    file = 'input.txt'
     monkeys = loadData(file)
+    ppcm = calculatePPCM(monkeys)
+
     stats ={}
     totalMonkey = len(monkeys)
     for i in range(0, totalMonkey):
         stats[i] = 0
-    #stats = {0:0, 1:0, 2:0, 3:0}
-    #print(f"monkeys {monkeys}")
-    print("@@@@@@@@@@@@@@@@@@  start  @@@@@@@@@@@@@@@@@@@@@@@@")
-    MonkeysStatus(monkeys)
-    for loop in range(1, 21):
+
+    #MonkeysStatus(monkeys)
+    for loop in range(1, 10001):
         # start_time = time.time()
         for m in range(0, totalMonkey):
             currentMonkey = monkeys[m]
             countItem = len(currentMonkey.getAllItem())
 
             for ite in range(0, countItem):
-                # print(f"Monkey {currentMonkey} list Item : {currentMonkey.getAllItem()}")
-                #worry = currentMonkey.getWorryLevel()
-                #start_time = time.time()
-                currentMonkey.throwItem2()
-                #print(f"throwItem2 - execute time: {(time.time() - start_time)} s")
-                #print(f"Monkey{currentMonkey} item {currentMonkey.getItem()} worry: {worry}")
+                item = currentMonkey.getItem()
+                ope = currentMonkey.getOperation()
+                currentItemValue = currentMonkey.inspectItem(item, ope, ppcm)
+                currentMonkey.throwItem2(currentItemValue)
                 stats[m] += 1
-            # print("\n")
-            print(f"------------monkey {m} inspect all item ------------------")
+
+        if loop == 1 or loop == 20 or loop == 1000 or loop == 2000:
+            print(f"=============loop {loop} ============")
             MonkeysStatus(monkeys)
-        # if loop == 1 or loop == 20 or loop == 1000 or loop == 2000:
-        print(f"========= end round {loop}====================")
-        MonkeysStatus(monkeys)
-        #MonkeysItemSize(monkeys)
-        print(stats)
-        # print(f"loop {loop} - execute time: {(time.time() - start_time)} s")
+            print(stats)
 
 
     listNbInspect = sorted([stats[x] for x in stats ], reverse=True)
     solution = listNbInspect[0] * listNbInspect[1]
-    #
-    print(f"{stats} max {solution}")
+    print(f"{listNbInspect} max {solution}")
 
 
 if __name__ == '__main__':
