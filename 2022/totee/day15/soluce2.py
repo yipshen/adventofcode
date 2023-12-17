@@ -3,7 +3,8 @@ import re
 from pprint import pprint
 
 import numpy as np
-
+import threading
+import time
 
 def scanMatriceSize(inputFile):
 
@@ -152,6 +153,22 @@ def loadmatrice(matrice, minCol, minLig, file):
             matrice[sensorY - minLig, sensorX - minCol] = 'S'
             matrice[beaconY - minLig, beaconX - minCol] = 'B'
 
+def loadmatrice2(matrice, minCol, minLig, maxLig, maxCol, file):
+    with open(file, 'r') as f:
+        for line in f:
+            x = re.findall("x=(-?[0-9]*)", line.strip())
+            y = re.findall("y=(-?[0-9]*)", line.strip())
+            #print(f"x: {x} y: {y}")
+            sensorX = eval(x[0])
+            sensorY = eval(y[0])
+            beaconX = eval(x[1])
+            beaconY = eval(y[1])
+            # print(f"sensorY: {sensorY} sensorX: {sensorX} -> matrice[{sensorY - minLig}, {sensorX - minCol}]")
+            # print(f"beaconY: {beaconY} beaconX: {beaconX} -> matrice[{beaconY - minLig}, {beaconX - minCol}]")
+            if sensorX >= minCol and sensorX < maxLig and sensorY >= minCol and sensorY < maxCol:
+                matrice[sensorY - minLig, sensorX - minCol] = 'S'
+                matrice[beaconY - minLig, beaconX - minCol] = 'B'
+
 def extracData(file):
     listSensors = []
     listBeacons = []
@@ -184,8 +201,8 @@ def putSignalOnMap(matrice, point, minCol, minLig, maxCol, maxLig):
             # print(f"putSignalPoint: {point} replace matrice: {matrice[(point[1] - minLig), (point[0] - minCol)]}")
             matrice[point[1] - minLig, point[0] - minCol] = '#'
 
-def putListSignalOnMap(matrice, listSigal, minCol, minLig, maxCol, maxLig):
-    for e in listSigal:
+def putListSignalOnMap(matrice, listSignal, minCol, minLig, maxCol, maxLig):
+    for e in listSignal:
         putSignalOnMap(matrice, e, minCol, minLig, maxCol, maxLig)
 
 def getManhattanDistance(sensor, beacon) -> int:
@@ -290,103 +307,169 @@ def filterSig(listeSig, filter):
             result.append(e)
     return result
 
-def addRespond(result, listetobefilter):
-    resultat = result
-    for e in listetobefilter:
-        if not e in resultat:
-            resultat.append(e)
+# test si le point est dans le losange du sensor
+def isinSensor(sensor, beacon, point):
+    px, py = point
+    sx, sy = sensor
+    manhattan = getManhattanDistance(sensor, beacon)
+    return abs(px-sx) + abs(py-sy) <= manhattan
 
-    return resultat
+
+
+def whichSensor(intervall, listsensors, listbeacons):
+    nbSensor = len(listsensors)
+    minCol, minLig, maxCol, maxLig = intervall
+    sensorList = []
+    beaconList = []
+    for e in range(nbSensor):
+        manhattan = getManhattanDistance(listsensors[e], listbeacons[e])
+        if isinSensor(listsensors[e], listbeacons[e], (minCol, minLig)) or \
+            isinSensor(listsensors[e], listbeacons[e], (maxCol, maxLig))  :
+            # print(f"sensor: {listsensors[e]} beacon: {listbeacons[e]}")
+            sensorList.append(listsensors[e])
+            beaconList.append(listbeacons[e])
+
+    return sensorList, beaconList
+
+
+def testInterval(intervall, listsensors, listbeacons,limite):
+    nbSensor = len(listsensors)
+    minCol, minLig, maxCol, maxLig = intervall
+    nextCase = False
+    cellToPath = []
+
+    for i in range(minCol,maxCol):
+        for j in range(minLig, maxLig):
+            cellToPath.append((i,j))
+    # print(f"celltopath: {cellToPath}")
+    while len(cellToPath)>0:
+        cpt = 0
+        for e in range(nbSensor):
+            c = cellToPath[0]
+            test = isinSensor(listsensors[e], listbeacons[e], c)
+            # print(f"--sensor: {listsensors[e]} cell:{c} test:{test} celltopathlen:{len(cellToPath)}")
+            if isinSensor(listsensors[e], listbeacons[e], c):
+                cellToPath.remove(c)
+                # print(f"celltopath after remove:{len(cellToPath)}")
+                if len(cellToPath) == 0:
+                     break
+            else:
+                cpt += 1
+            if (cpt == nbSensor) and (c[0]<= limite and c[1] <=limite):
+                # print(f"solute {c}")
+                return (c)
+
+
+def getBoundSensor(sensor, beacon, mincol, maxcol, minlig, maxlig):
+    result = []
+    manhattan = getManhattanDistance(sensor, beacon)+1
+    sX, sY = sensor
+    j = manhattan
+    #premier quart ++ second quart -+
+    for i in range(manhattan+1):
+        rX1 = sX + i
+        rY1 = sY + j
+        # print(f"++ {rX1,rY1}")
+        if rX1 >= mincol and rX1 <= maxcol and rY1 >= minlig and rY1 <= maxlig:
+            result.append((rX1,rY1))
+        rX2 = sX - j
+        rY2 = sY + i
+        # print(f"-+ {rX2,rY2}")
+        if rX2 >= mincol and rX2 <= maxcol and rY2 >= minlig and rY2 <= maxlig:
+            result.append((rX2,rY2))
+
+        rX3 = sX - j
+        rY3 = sY - i
+        # print(f"-- {rX3, rY3}")
+        if rX3 >= mincol and rX3 <= maxcol and rY3 >= minlig and rY3 <= maxlig:
+            result.append((rX3,rY3))
+        rX4 = sX + i
+        rY4 = sY - j
+        # print(f"+- {rX4, rY4}")
+        if rX4 >= mincol and rX4 <= maxcol and rY4 >= minlig and rY4 <= maxlig:
+            result.append((rX4,rY4))
+        j -= 1
+    return set(result)
+
+
+def isInSensorList(listSensors, listBeacons, point):
+    listSize = len(listSensors)
+    result = False
+    for e in range(listSize):
+        if isinSensor(listSensors[e], listBeacons[e], point):
+            return True
+    return False
 
 
 def main():
-    inputfile = "test.txt"
-    # lineToCount = 10
-    # inputfile = "input.txt"
-    # lineToCount = 2000000
+    # inputfile = "test.txt"
+    inputfile = "input.txt"
 
-    # minCol, maxCol, minLig, maxLig = scanMatriceSize(inputfile)
 
+    minCol, maxCol, minLig, maxLig = scanMatriceSize(inputfile)
+    #
     # minCol = minCol-2
-    # minCol = 0
-    # minLig = minLig-2
-    # minLig = 0
+    minCol = 0
+    # minLig = minLig-4
+    minLig = 0
     # maxLig = maxLig+1
     # maxCol = maxCol+1
+    maxLig = 4000000
+    maxCol = 4000000
+    # maxCol = 20
+    # maxLig = 20
+    #
     # print(f"minCol:{minCol}, maxCol:{maxCol}, minLig:{minLig} maxLig:{maxLig}")
     # map = initMatrice(abs(minLig) + abs(maxLig), abs(minCol) + abs(maxCol))
     # nbLig, nbCol = map.shape
     # print(f"taille matrice: nbligne:{nbLig} nbcol:{nbCol}")
     # loadmatrice(map, minCol, minLig, inputfile)
+    # loadmatrice2(map, minCol, minLig, maxLig, maxCol, inputfile)
+
+    # listSensors, listBeacons = extracData(inputfile)
+    #
+    # nbElement = len(listSensors)
+    # print(f"listSensors: {listSensors}\nlistBeacons: {listBeacons}")
+    # listFinale = []
+    #
+    # for i in range(nbElement):
+    #     sensor = listSensors[i]
+    #     beacon = listBeacons[i]
+    #     listCoord = getListCoordManhattan1(sensor, beacon, 25)
+    #     putListSignalOnMap(map, listCoord, minCol, minLig, maxCol, maxLig)
+    #
+    # afficheMatrice2(map, minCol, minLig, maxCol, maxLig)
 
     listSensors, listBeacons = extracData(inputfile)
-
-    cellX, cellY = 0,0
-
+    # afficheMatrice2(map, minCol, minLig, maxCol, maxLig)
     nbElement = len(listSensors)
-    print(f"listSensors: {listSensors}\nlistBeacons: {listBeacons}")
-    listFinale = []
-    limite = 20
-    listFinaleLig =[]
-    for i in range(nbElement):
-        sensor = listSensors[i]
-        beacon = listBeacons[i]
-        manhattan_lenght = getManhattanDistance(sensor, beacon)
-        print(f"sensor: {sensor} beacon: {beacon} manhattan: {manhattan_lenght}")
-        listCoordLine = getListCoordManhattan1(sensor, beacon, limite)
-        # listCoordCol = getListCoordManhattan4(sensor, beacon, lineToCount, limite)
-        print(f'listCoordline: {len(listCoordLine)}')
-        listFinaleLig += set(listCoordLine)
-        # listFinaleCol += listCoordCol
+    final = []
 
-    setfinalLig = set(listFinaleLig)
-    for l in range(limite+1):
-        for k in range(limite+1):
-            if not ((l,k) in setfinalLig):
-                print(f"toto : {l} {k}")
-    # print(f"setfinal: {sorted(setfinalLig)}")
-    print(f"setfinalLig len:{len(setfinalLig)}")
-        # setfinalCol = set(listFinaleCol)
-        # if len(setfinalLig) != limite+1 :
-        #     print(f"line: {lineToCount} len: {len(setfinalLig)} ")
-        #     # print(f"{sorted(setfinalLig)}\n")
-        #     cellY = lineToCount
-        # if len(setfinalCol) != limite+1 :
-        #     print(f"col: {lineToCount} len: {len(setfinalCol)} ")
-        #     # print(f"{sorted(setfinalCol)}\n")
-        #     cellX = lineToCount
-    print(f"fin")
-    # print(f"solution2 :{cellX*4000000+cellY}")
+    # measure duration
+    start = time.time()
 
-        # putListSignalOnMap(map, sorted(listCoord), minCol, minLig, maxCol, maxLig)
-            # afficheMatrice(map, minCol, minLig)
-            # resetMap(map)
-    # afficheMatrice2(map, 0, 0, 20, 20)
+    for e in range(nbElement):
+        print(f"{e} sensor:{listSensors[e]} beacon:{listBeacons[e]}")
+        r = getBoundSensor(listSensors[e], listBeacons[e], minCol, maxCol, minLig, maxLig)
 
+        for point in r:
+            if not isInSensorList(listSensors, listBeacons, point):
+                print(f"pottential beacon detected")
+                final.append(point)
+        print(f"size final: {len(final)}")
     #
-    # sensor1 = (8, 7) # (col, ligne)
-    # sensor2 = (2, 0)
-    # sensor3 = (0, 11)
     #
-    # beacon1 = (2, 10)  # (col, ligne)
-    # print(f"manhattan distance beacon: {beacon} - sensor: {sensor} = {getManhattanDistance(sensor,beacon)}")
-    # listCoordSig1 = getListCoordManhattan(sensor1, beacon1)
-    # listCoordSig2 = getListCoordManhattan(sensor2, beacon1)
-    # listCoordSig3 = getListCoordManhattan(sensor3, beacon1)
+    #     putListSignalOnMap(map, r, minCol, minLig, maxCol, maxLig)
+    #     afficheMatrice2(map, minCol, minLig, maxCol, maxLig)
+    #     final += list(r)
+    final = set(final)
+    print(f"final: {list(final)[0]}")
+    soluce2X, soluce2Y = list(final)[0]
+    soluce2 = soluce2X * 4000000 + soluce2Y
     #
-    # # print(f"manhatan coord: {listCoordSig2}")
-    # putListSignalOnMap(map, listCoordSig1, minCol, minLig, maxCol, maxLig)
-    # putListSignalOnMap(map, listCoordSig2, minCol, minLig, maxCol, maxLig)
-    # putListSignalOnMap(map, listCoordSig3, minCol, minLig, maxCol, maxLig)
-    #
-    # afficheMatrice(map, minCol, minLig)
-    # putSignalOnMap(map, (8, 8), minCol, minLig)
-    # putSignalOnMap(map, (8, 9), minCol, minLig)
-    # afficheMatrice(map, minCol, minLig)
-    # resetMap(map)
-    # afficheMatrice(map, minCol, minLig)
-
-
+    print(f"soluce2: {soluce2}")
+    end = time.time()
+    print(end - start)  # time in seconds
 
 if __name__ == '__main__':
     main()
